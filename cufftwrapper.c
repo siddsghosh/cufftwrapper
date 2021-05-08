@@ -17,7 +17,7 @@ void cuz2d_( int *nx, int *ny, int *nz, cufftDoubleComplex *a )
 	int nb;
 
 	nb = (*ny)*(*nz);
-	plan = getPlan( *nx, ((*nx)/2+1), (*nx), nb, CUFFT_Z2D );
+	plan = getPlan( *nx, ((*nx)/2+1), (*nx)+2, nb, CUFFT_Z2D );
 	gpuErrchk( cufftExecZ2D(*plan, a, (cufftDoubleReal*)a) );
 }
 
