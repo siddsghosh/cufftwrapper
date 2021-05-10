@@ -38,5 +38,5 @@ void cuz2zb_( int *nx, int *ny, int *nz, cufftDoubleComplex *a )
 
 	nb = (*ny)*(*nz);
 	plan = getPlan( *nx, *nx, *nx, nb, CUFFT_Z2Z );
-	gpuErrchk( cufftExecZ2Z(*plan, a, a, CUFFT_FORWARD ) );
+	gpuErrchk( cufftExecZ2Z(*plan, a, a, CUFFT_INVERSE ) );
 }
