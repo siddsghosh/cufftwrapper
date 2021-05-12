@@ -23,11 +23,20 @@ void initialize()
 }
 
 int isEqualPlan( int i, int n, int idist, int odist, int nb, cufftType tfft )
-{
-	if ( plantbl[i].n     != 0     && plantbl[i].n     == n     && 
-             plantbl[i].idist == idist && plantbl[i].odist == odist && 
-             plantbl[i].nb    == nb    && plantbl[i].type  == tfft ){
+{ /*
+      returns,
+          1   if i-th Plan matches with arguments
+         -1   if i-th Plan does not match but the location is occupied
+          0   if the location is empty for filling in
+  */
+	if ( plantbl[i].n != 0 ){
+           if ( plantbl[i].n     == n     && plantbl[i].idist == idist && 
+                plantbl[i].odist == odist && plantbl[i].nb    == nb    && 
+                plantbl[i].type  == tfft ){
 		return 1;
+           } else {
+                return -1;
+           }
 	}else{
 		return 0;
 	}
@@ -61,17 +70,17 @@ cufftHandle * setPlan( int i, int n, int idist, int odist, int nb, cufftType tff
 
 cufftHandle * getPlan( int n, int idist, int odist, int nb, cufftType tfft )
 {
-	int i;
+	int i, planeq;
 
 	if (init_state == 0)initialize();
 	for(i=0; i<MAXPLANS; i++){
-		if ( isEqualPlan( i, n, idist, odist, nb, tfft ) == 1){
+		planeq = isEqualPlan( i, n, idist, odist, nb, tfft );
+		if ( planeq == 1){
 			return &plantbl[i].plan;
-		}else{
+		}else if( planeq == 0){
 			return setPlan( i, n, idist, odist, nb, tfft );
 		}
 	}
 	printf("Please increase MAXPLANS and rerun...!");
 	exit(-1);
 }
-

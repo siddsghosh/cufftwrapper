@@ -1,45 +1,53 @@
+!-----------------------------------------------------------
+! Test code to check the 1d-cufft:
+!   1. Real to complex
+!   2. Complex to real
+!   3. complex to comples, backward and inverse
+! several of instances of the samples together in batch
+! 
+! In all cases, transform is along X-direction and in place.
+!-----------------------------------------------------------
 program testr2c
 implicit none
-integer :: nx, ny, nz, i,j
-!real, dimension(:,:,:), allocatable :: a, b
-complex, dimension(:,:,:), allocatable :: a, b
+integer :: nx, ny, nz, i, j, k
+real, dimension(:,:,:), allocatable :: a, ab
+complex, dimension(:,:,:), allocatable :: ca, cab
 real :: pi
 nx = 16
-ny = 1
+ny = 2
 nz = 1
-allocate(a(nx,ny,nz),b(nx,ny,nz))
+allocate(a(nx+2,ny,nz),ab(nx,ny,nz),ca(nx,ny,nz),cab(nx,ny,nz))
 pi = 4.*atan(1.)
 a = 0.
-!a(1,1,1) = cmplx(1.0,0)
-do i = 1, nx
+ca = cmplx(0.,0.)
+do k = 1, nz
    do j = 1, ny
-!      a(i,j,1) = sin(2.*pi*float(i-1)/float(nx))
-       a(i,j,1) = cmplx(sin(2.*pi*float(i-1)/float(nx)),cos(2.*pi*float(i-1)/float(nx)))
+      do i = 1, nx
+          a(i,j,k) = sin(2.*pi*float(i-1)/float(nx))
+          ca(i,j,k) = cmplx(sin(2.*pi*float(i-1)/float(nx)),cos(2.*pi*float(i-1)/float(nx)))
+      enddo
    enddo
 enddo
-b = a
-!do i = 1, nx
-!  print '(A7,1x,i2,4(1x,f12.5))','org: ',i,(a(i,j,1),j=1,ny)
-!enddo
-!print *,'org: ',a
-!$acc data copy(a)
-!$acc host_data use_device(a)
-!call cud2z( nx, ny, nz, a )
-call cuz2zf( nx, ny, nz, a )
+ab = a
+cab = ca
+!$acc data copy(a,ca)
+!$acc host_data use_device(a,ca)
+call cud2z( nx, ny, nz, a )
+call cuz2zf( nx, ny, nz, ca )
 !$acc end host_data
 !$acc end data
 a = a/nx
-!do i = 1, nx
-!  print '(A7,1x,i2,4(1x,f12.5))','trans: ',i,(a(i,j,1),j=1,ny)
-!enddo
-!stop
-!$acc data copy(a)
-!$acc host_data use_device(a)
-!call cuz2d( nx, ny, nz, a )
-call cuz2zb( nx, ny, nz, a )
+ca = ca/nx
+!$acc data copy(a,ca)
+!$acc host_data use_device(a,ca)
+call cuz2d( nx, ny, nz, a )
+call cuz2zb( nx, ny, nz, ca )
 !$acc end host_data
 !$acc end data
 do i = 1, nx
-  print '(A6,1x,i2,4(1x,f12.5))','back: ',i,b(i,1,1),(a(i,j,1),j=1,ny)
+  print '(A9,1x,i2,8(1x,f5.2))','r2dnback: ',i,ab(i,1,1),(a(i,j,1),j=1,ny)
+enddo
+do i = 1, nx
+  print '(A9,1x,i2,8(1x,f5.2))','z2znback: ',i,cab(i,1,1),(ca(i,j,1),j=1,ny)
 enddo
 end
