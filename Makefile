@@ -17,7 +17,10 @@ cufftwrapper.o : cufftwrapper.c
 getplan.o : getplan.c
 	nvcc -c -I$(CUINC) -o $@ $<
 
-test.exe : cufftwrapper.o getaccstrm.o getplan.o test.f90
+fortranfft.o : fortranfft.f90
+	nvfortran -c -r8 -acc -o $@ $^
+
+test.exe : test.f90 fortranfft.o cufftwrapper.o getaccstrm.o getplan.o
 	nvfortran -r8 -acc -o $@ $^ -L$(CUFFTDIR) -L$(CUDALIBDIR) $(CULIBS)
 
 tst.exe: tst.c
