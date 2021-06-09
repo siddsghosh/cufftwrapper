@@ -44,6 +44,7 @@ contains
 
       !$acc data copyin(ax) copyout(at)
       call fortcud2z( nx, iys, iye, iz1, iz2, fn, ax )
+
       call xtoy_trans(ax,at,nxp2,ny,jxs,jxe,jx_s,jx_e, &
              iys,iye,iy_s,iy_e,iz1,iz2,myid,ncpu,ncpu)
 
@@ -130,7 +131,7 @@ contains
       else
          call send_xtoy(f,ft(1,i),nx,ix_s(is),ix_e(is),iy_s(myid),iy_e(myid),iz1,iz2)
          j = j + 1
-         !$acc host_data use_device(f,g,ft,gt)
+         !$acc host_data use_device(ft,gt)
          call mpi_isend(ft(1,i),nsend,mpi_real8,is,1,newcomm,ireqs(j),ierr)
          call mpi_irecv(gt(1,i),nrecv,mpi_real8,ir,1,newcomm,ireqr(j),ierr)
          !$acc end host_data
@@ -138,6 +139,7 @@ contains
    enddo
    call MPI_Waitall((ncpu_s-1),ireqr,status,ierr)
    do i=1,ncpu_s
+      ir    = mod(myid - iss + (ncpu_s - i),ncpu_s) + iss
       call recv_xtoy(g,gt(1,i),ny,ix_s(myid),ix_e(myid),iy_s(ir),iy_e(ir),iz1,iz2)
    enddo
    call MPI_Waitall((ncpu_s-1),ireqs,status,ierr)
@@ -177,7 +179,7 @@ contains
       else
           call send_ytox(g,gt(1,i),ny,ix_s(myid),ix_e(myid),iy_s(is),iy_e(is),iz1,iz2)
           j = j + 1
-          !$acc host_data use_device(f,g,ft,gt)
+          !$acc host_data use_device(ft,gt)
           call mpi_isend(gt(1,i),nsend,mpi_real8,is,1,newcomm,ireqs(j),ierr)
           call mpi_irecv(ft(1,i),nrecv,mpi_real8,ir,1,newcomm,ireqr(j),ierr)
           !$acc end host_data
@@ -185,6 +187,7 @@ contains
    enddo
    call MPI_Waitall((ncpu_s-1),ireqr,status,ierr)
    do i=1,ncpu_s
+      ir    = mod(myid - iss + (ncpu_s - i),ncpu_s) + iss
       call recv_ytox(f,ft(1,i),nx,ix_s(ir),ix_e(ir),iy_s(myid),iy_e(myid),iz1,iz2)
    enddo
    call MPI_Waitall((ncpu_s-1),ireqs,status,ierr)
