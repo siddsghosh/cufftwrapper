@@ -6,11 +6,12 @@ module cufft2d_mpi_mod
    integer :: init_a2d_c = 1, init_ftgt = 1, newcomm
    integer, allocatable :: ireqs(:), ireqr(:), status(:,:)
    real(8), allocatable :: a2d_c(:,:,:,:), ft(:,:), gt(:,:)
+   real(8), allocatable, dimension (:,:,:) :: ax, at
    integer :: deljx, deliz
 
 contains
    subroutine cufft2d_mpi(ax,at,nx,ny,jxs,jxe,jx_s,jx_e,iys,iye, &
-       iy_s,iy_e,iz1,iz2,myid,ncpu,isgn)
+       iy_s,iy_e,iz1,iz2,myid,ncpu,isgn,pdt)
 !
 ! -------- get 2d fft using fftpack routines and parallel mpi
 !          use fftpack storage a0, (a1,b1), (a2,b2),...,
@@ -33,7 +34,7 @@ contains
 !
    implicit none
    integer :: nx,ny,jxs,jxe,iys,iye,iz1,iz2,myid,ncpu,isgn,nxp2,ix,iy,iz
-   real :: ax(nx+2,iys:iye,iz1:iz2), at(ny,jxs:jxe,iz1:iz2), fn
+   real :: ax(nx+2,iys:iye,iz1:iz2), at(ny,jxs:jxe,iz1:iz2), fn, t1, t2, pdt(12)
    integer :: jx_s(0:ncpu-1), jx_e(0:ncpu-1),iy_s(0:ncpu-1), iy_e(0:ncpu-1)
 
    nxp2 = nx + 2
@@ -42,15 +43,24 @@ contains
 
 ! ------ 1d fft in x over [iys,iye] for all z
 
+      t1 = MPI_Wtime()
       !$acc data copyin(ax) copyout(at)
+      t2 = MPI_Wtime()
+      pdt(1) = pdt(1) + (t2-t1)
       call fortcud2z( nx, iys, iye, iz1, iz2, fn, ax )
-
+      t1 = MPI_Wtime()
+      pdt(2) = pdt(2) + (t1-t2)
+      
       call xtoy_trans(ax,at,nxp2,ny,jxs,jxe,jx_s,jx_e, &
              iys,iye,iy_s,iy_e,iz1,iz2,myid,ncpu,ncpu)
+      t2 = MPI_Wtime()
+      pdt(3) = pdt(3) + (t2-t1)
 
 ! ------ 1d fft in y over [jxs,jxe] for all z
 
       call fortcuz2zf( ny, jxs, jxe, iz1, iz2, at )
+      t1 = MPI_Wtime()
+      pdt(4) = pdt(4) + (t1-t2)
  
 ! ---- decide whether to transpose back or leave as is
  
@@ -58,29 +68,46 @@ contains
          call ytox_trans(at,ax,nxp2,ny,jxs,jxe,jx_s,jx_e, &
                     iys,iye,iy_s,iy_e,iz1,iz2,myid,ncpu,ncpu)
       endif
+      t2 = MPI_Wtime()
+      pdt(5) = pdt(5) + (t2-t1)
       !$acc end data
+      t1 = MPI_Wtime()
+      pdt(6) = pdt(6) + (t1-t2)
 
    else
 
 ! ---- decide whether to first transpose or leave as is
 
+      t1 = MPI_Wtime()
       !$acc data copyin(at) copyout(ax)
+      t2 = MPI_Wtime()
+      pdt(7) = pdt(7) + (t2-t1)
       if(isgn .eq. 1) then
          call xtoy_trans(ax,at,nxp2,ny,jxs,jxe,jx_s,jx_e, &
                    iys,iye,iy_s,iy_e,iz1,iz2,myid,ncpu,ncpu)
       endif
+      t1 = MPI_Wtime()
+      pdt(8) = pdt(8) + (t1-t2)
  
 ! ------ 1d fft in y over [jxs,jxe] for all z
  
       call fortcuz2zb( ny, jxs, jxe, iz1, iz2, at )
+      t2 = MPI_Wtime()
+      pdt(9) = pdt(9) + (t2-t1)
 
       call ytox_trans(at,ax,nxp2,ny,jxs,jxe,jx_s,jx_e,  &
                  iys,iye,iy_s,iy_e,iz1,iz2,myid,ncpu,ncpu)
+      t1 = MPI_Wtime()
+      pdt(10) = pdt(10) + (t1-t2)
 
 ! ------  1d fft in x over [iys,iye] for all z
 
       call fortcuz2d( nx, iys, iye, iz1, iz2, ax )
+      t2 = MPI_Wtime()
+      pdt(11) = pdt(11) + (t2-t1)
       !$acc end data
+      t1 = MPI_Wtime()
+      pdt(12) = pdt(12) + (t1-t2)
    endif
    return
    end
